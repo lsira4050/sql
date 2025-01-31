@@ -1,3 +1,5 @@
+# NAME: Laura Siracusa
+
 # Assignment 2: Design a Logical Model and Advanced SQL
 
 🚨 **Please review our [Assignment Submission Guide](https://github.com/UofT-DSI/onboarding/blob/main/onboarding_documents/submissions.md)** 🚨 for detailed instructions on how to format, branch, and submit your work. Following these guidelines is crucial for your submissions to be evaluated correctly.
@@ -55,9 +57,120 @@ The store wants to keep customer addresses. Propose two architectures for the CU
 
 ```
 Your answer...
-```
 
-***
+#Prompt 1
+#Book table:
+CREATE TABLE Book (
+    BookID INTEGER PRIMARY KEY,
+    Title TEXT,
+    Author TEXT,
+    ISBN TEXT,
+    Price REAL,
+    Publisher TEXT,
+    PublicationDate TEXT -- Store date as TEXT in 'YYYY-MM-DD' format
+)
+
+#Customer Table
+CREATE TABLE Customer (
+    CustomerID INTEGER PRIMARY KEY,
+    FirstName TEXT,
+    LastName TEXT,
+    Email TEXT,
+    Phone TEXT,
+    Address TEXT
+)
+#Date Table
+CREATE TABLE Date (
+    DateID INTEGER PRIMARY KEY,
+    Date TEXT, -- Store date as TEXT in 'YYYY-MM-DD' format
+    Day INTEGER,
+    Month INTEGER,
+    Year INTEGER,
+    Quarter INTEGER
+)
+#Employee Table
+CREATE TABLE Employee (
+    EmployeeID INTEGER PRIMARY KEY,
+    FirstName TEXT,
+    LastName TEXT,
+    Email TEXT,
+    Phone TEXT,
+    HireDate TEXT, -- Store date as TEXT in 'YYYY-MM-DD' format
+    Position TEXT
+)
+#Order Table
+CREATE TABLE "Order" (
+	"OrderID"	INTEGER,
+	"CustomerID"	INTEGER,
+	"EmployeeID"	INTEGER,
+	"OrderDate"	TEXT,
+	"TotalAmount"	REAL,
+	PRIMARY KEY("OrderID"),
+	FOREIGN KEY("CustomerID") REFERENCES "Customer"("CustomerID"),
+	FOREIGN KEY("EmployeeID") REFERENCES "Employee"("EmployeeID")
+)
+#Sales TAble
+CREATE TABLE "Sales" (
+	"SalesID"	INTEGER,
+	"OrderID"	INTEGER,
+	"BookID"	INTEGER,
+	"Quantity"	INTEGER,
+	"UnitPrice"	REAL,
+	PRIMARY KEY("SalesID"),
+	FOREIGN KEY("BookID") REFERENCES "Book"("BookID"),
+	FOREIGN KEY("OrderID") REFERENCES ""
+)
+#Prompt 2
+#Shift TAble
+CREATE TABLE Shift (
+    ShiftID INTEGER PRIMARY KEY,
+    ShiftName TEXT,
+    ShiftType TEXT, -- New column to indicate shift type (e.g., "Morning", "Evening")
+    StartTime TEXT, -- Store time as TEXT in 'HH:MM' format
+    EndTime TEXT -- Store time as TEXT in 'HH:MM' format
+)
+#EmployeeShift Table
+CREATE TABLE EmployeeShift (
+    EmployeeShiftID INTEGER PRIMARY KEY,
+    EmployeeID INTEGER,
+    ShiftID INTEGER,
+    ShiftDate TEXT, -- Store date as TEXT in 'YYYY-MM-DD' format
+    FOREIGN KEY (EmployeeID) REFERENCES Employee(EmployeeID),
+    FOREIGN KEY (ShiftID) REFERENCES Shift(ShiftID)
+)
+#Add difference between morning and evening shifts
+INSERT INTO Shift (ShiftName, ShiftType, StartTime, EndTime) VALUES
+('Morning Shift', 'Morning', '08:00', '12:00'),
+('Evening Shift', 'Evening', '13:00', '17:00');
+
+
+#Prompt 3
+#Type 1 Overwrite Changes
+CREATE TABLE CustomerAddress (
+    CustomerID INTEGER PRIMARY KEY,
+    AddressLine1 TEXT,
+    AddressLine2 TEXT,
+    City TEXT,
+    Province TEXT,
+    PostalCode TEXT,
+    Country TEXT,
+    FOREIGN KEY (CustomerID) REFERENCES Customer(CustomerID)
+);
+
+#Type 2  Retain Changes
+CREATE TABLE CustomerAddress (
+    AddressID INTEGER PRIMARY KEY,
+    CustomerID INTEGER,
+    AddressLine1 TEXT,
+    AddressLine2 TEXT,
+    City TEXT,
+    Province TEXT,
+    PostalCode TEXT,
+    Country TEXT,
+    StartDate TEXT, -- Store date as TEXT in 'YYYY-MM-DD' format
+    EndDate TEXT, -- Store date as TEXT in 'YYYY-MM-DD' format, NULL for current address
+    FOREIGN KEY (CustomerID) REFERENCES Customer(CustomerID)
+);
 
 ## Section 2:
 You can start this section following *session 4*.
@@ -86,7 +199,11 @@ Find the NULLs and then using COALESCE, replace the NULL with a blank for the fi
 
 **HINT**: keep the syntax the same, but edited the correct components with the string. The `||` values concatenate the columns into strings. Edit the appropriate columns -- you're making two edits -- and the NULL rows will be fixed. All the other rows will remain the same.
 
-<div align="center">-</div>
+FROM product<div align="center">-</div>
+
+-- Correcting null values
+SELECT 
+product_name || ', ' || COALESCE(product_size, '') || ' (' || COALESCE(product_qty_type, 'unit') || ')'
 
 #### Windowed Functions
 1. Write a query that selects from the customer_purchases table and numbers each customer’s visits to the farmer’s market (labeling each market date with a different number). Each customer’s first visit is labeled 1, second visit is labeled 2, etc. 
@@ -95,12 +212,59 @@ You can either display all rows in the customer_purchases table, with the counte
 
 **HINT**: One of these approaches uses ROW_NUMBER() and one uses DENSE_RANK().
 
+--Display all rows in customer_purchases table
+SELECT 
+    customer_id,
+    market_date,
+    ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY market_date) AS visit_number
+FROM 
+    customer_purchases;
+
+--Select only unique market dates per customer, and visits numbered
+SELECT 
+    customer_id,
+    market_date,
+    DENSE_RANK() OVER (PARTITION BY customer_id ORDER BY market_date) AS visit_number
+FROM 
+    (SELECT DISTINCT customer_id, market_date FROM customer_purchases) AS unique_visits;
+
+
 2. Reverse the numbering of the query from a part so each customer’s most recent visit is labeled 1, then write another query that uses this one as a subquery (or temp table) and filters the results to only the customer’s most recent visit.
+
+SELECT 
+    customer_id,
+    market_date,
+    ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY market_date DESC) AS visit_number
+FROM 
+    customer_purchases;
+	WITH ranked_visits AS (
+    SELECT 
+        customer_id,
+        market_date,
+        ROW_NUMBER() OVER (PARTITION BY customer_id ORDER BY market_date DESC) AS visit_number
+    FROM 
+        customer_purchases
+)
+SELECT 
+    customer_id,
+    market_date
+FROM 
+    ranked_visits
+WHERE 
+    visit_number = 1;
 
 3. Using a COUNT() window function, include a value along with each row of the customer_purchases table that indicates how many different times that customer has purchased that product_id.
 
 <div align="center">-</div>
 
+SELECT 
+    customer_id,
+    product_id,
+    market_date,
+    COUNT(*) OVER (PARTITION BY customer_id, product_id) AS purchase_count
+FROM 
+    customer_purchases;
+	
 #### String manipulations
 1. Some product names in the product table have descriptions like "Jar" or "Organic". These are separated from the product name with a hyphen. Create a column using SUBSTR (and a couple of other commands) that captures these, but is otherwise NULL. Remove any trailing or leading whitespaces. Don't just use a case statement for each product! 
 
@@ -112,12 +276,64 @@ You can either display all rows in the customer_purchases table, with the counte
 
 <div align="center">-</div>
 
+SELECT 
+    product_name,
+    TRIM(SUBSTR(product_name, INSTR(product_name, '-') + 1)) AS description
+FROM 
+    product
+WHERE 
+    INSTR(product_name, '-') > 0;
+	
+
 #### UNION
 1. Using a UNION, write a query that displays the market dates with the highest and lowest total sales.
 
 **HINT**: There are a possibly a few ways to do this query, but if you're struggling, try the following: 1) Create a CTE/Temp Table to find sales values grouped dates; 2) Create another CTE/Temp table with a rank windowed function on the previous query to create "best day" and "worst day"; 3) Query the second temp table twice, once for the best day, once for the worst day, with a UNION binding them. 
 
 ***
+-- Step 1: Create a CTE to find total sales grouped by market dates
+WITH SalesByDate AS (
+    SELECT 
+        market_date,
+        SUM(cost_to_customer_per_qty * quantity) AS total_sales
+    FROM 
+        customer_purchases
+    GROUP BY 
+        market_date
+),
+
+-- Step 2: Create another CTE with a rank windowed function to rank the sales
+RankedSales AS (
+    SELECT 
+        market_date,
+        total_sales,
+        RANK() OVER (ORDER BY total_sales DESC) AS sales_rank_desc,
+        RANK() OVER (ORDER BY total_sales ASC) AS sales_rank_asc
+    FROM 
+        SalesByDate
+)
+
+-- Step 3: Query the second CTE twice, once for the best day, once for the worst day, with a UNION binding them
+SELECT 
+    market_date,
+    total_sales,
+    'Highest Sales' AS sales_type
+FROM 
+    RankedSales
+WHERE 
+    sales_rank_desc = 1
+
+UNION
+
+SELECT 
+    market_date,
+    total_sales,
+    'Lowest Sales' AS sales_type
+FROM 
+    RankedSales
+WHERE 
+    sales_rank_asc = 1;
+
 
 ## Section 3:
 You can start this section following *session 5*.
@@ -184,3 +400,10 @@ Consider, for example, concepts of labour, bias, LLM proliferation, moderating c
 ```
 Your thoughts...
 ```
+	Reading Vicki Boykis's article feels like pulling back the curtain on a magic trick. You know those impressive AI systems everyone's talking about? Turns out they're built on good old-fashioned human work - lots of it. And that raises some pretty big questions we need to think about. First up is the invisible workforce making all this possible. It's kind of like finding out your H&M t-shirt was hand-sewn - there's a whole world of human labor we never see. Take ImageNet, this massive database that powers many AI image recognition systems. Behind those sophisticated algorithms are countless people on Amazon Mechanical Turk, labeling images for pennies. Graduate students manually sorting through words. People doing the grunt work that makes AI look magical.
+	Then there's the bias problem. When humans do the classifying and labeling, they bring their own perspectives and biases along for the ride. These biases get baked right into the foundation of AI systems. Remember that ImageNet art project where people could upload their photos and get AI labels back? Some of the results were pretty problematic - calling people "orphans" or "nerds" based on their appearance. Those weren't random glitches; they came from human-made classifications. The power structure here is fascinating too. At the top, you've got tech companies and famous researchers getting the glory. In the middle, academics doing the theoretical work. At the bottom, workers doing the endless task of labeling and sorting for minimal pay. Sound familiar? It's not so different from how fast fashion works - a few at the top profiting from many at the bottom.
+	What's particularly tricky is how hidden all this is. When we can't see how these systems are built, it's hard to fix problems when they come up. It's like trying to fix a car when you can't open the hood. ImageNet's recent efforts to clean up biased classifications show just how complicated this can get. There's also the question of whose worldview gets encoded into these systems. When the foundational datasets are built mainly from Western perspectives, what does that mean for everyone else? It's like writing a world history book but only using sources from one country.
+The academic-commercial pipeline adds another layer of complexity. Projects that start in universities often end up powering commercial AI systems. That's not necessarily bad, but it raises questions about responsibility. When your research project suddenly affects millions of people, who's accountable for the outcomes?
+	Looking ahead, we've got some big questions to tackle. How do we make sure the people doing the foundational work are treated fairly? How do we build AI systems that don't just amplify existing biases? How do we make the human side of AI development more visible? What's striking is that these aren't really new problems - they're age-old questions about labor, power, and technology showing up in new ways. Just as we're still figuring out ethical manufacturing, we're now grappling with ethical AI development.
+The bottom line? AI isn't as artificial as we might think. Behind every "smart" system is a network of very human decisions, work, and consequences. If we want to build better AI, we need to start by acknowledging and addressing the human element. After all, it's people all the way down.
+
